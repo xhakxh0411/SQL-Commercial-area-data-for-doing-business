@@ -1,0 +1,115 @@
+
+Hyunseung Hong <hyunseunghong98@gmail.com>
+2022. 7. 31. 오후 8:29
+나에게
+
+#서울특별시 강남구 기준 각 업종별 상가의 개수가 많은 순으로 조회한다.'
+#상권정보 데이터 다운로드
+
+SELECT A.CTPRVN_CD
+    ,A.CTPRVN_NM
+    ,A.SIGNGU_CD
+    ,A.SIGNGU_NM
+    ,A.TRDAR_INDUTY_LRGE_CL_CD
+    ,A.TRDAR_INDUTY_LRGE_CL_NM
+    ,COUNT(*) CNT # 3)) 상가의 개수를 구한다
+FROM TB_TRDAR A #1))   _TB_TRDAR 테이블을 조회한다
+WHERE SIGNGU_CD = '11680' # 2)) 강남구를 기준으로 한다
+GROUP BY A.CTPRVN_CD, A.CTPRVN_NM, A.SIGNGU_CD, ALSIGNGU_NM, A.TRADAR_INDUTY_LRGE_CL_CD, A.TRDAR_INDUTY_LRGE_CL_NM
+ORDER BY CNT DESC;
+
+위 sql 문의 성능을 빠르게 하고싶다면 아래의 인덱스를 생성한다
+CREATE INDEX IDX_TB_TRDAR_01 ON TB_TRDAR(SIGNGU_CD);
+
+
+
+04)각 지역별(읍/면/동 기준) 스타벅스 매장 개수의 개수가 많은 지역 상위 10군데 조회
+
+SELECT
+    *
+FROM
+(
+    SELECT A.CTPRVN_CD
+    ,A.CTPRVN_NM
+    ,A.SIGNUGU_CD
+    ,A.SIGNGU_NM
+    ,A.ADSTRD_CD
+    ,A.ADSTRD_NM # 지역별(읍/면동)기준 스타벅스 매장의 개수를 구함
+    ,COUNT(*) CNT
+
+FROM TB_TRADER A
+WHERE ( A.CMPNM_NM LIKE
+        OR UPPER(A.CMPNM_NM) LIKE '%' || UPPER('STAR') '%'||UPPER('BUCKS')||'%' )
+ '%스타벅스%' #상점명이 스타벅스를 포함하고있거나 영문으로 "STAR"랑 "BUCKS"가 동시에 존재하는 상점명을 찾음
+    )
+
+AND A.TRDAR_INDUTY_SMALL_CL_CD = 'Q12A01' --커피전문점/카페/다방
+GROUP BY A.CTPRVN_CD, A.CTPRVN_NM, A.SIGNUGU_CD, A.SIGNGU_NM, A.ADSTRD_CD, A.ADSTRD_NM # 지역별(읍/면/동) 별로 그룹화를한다.
+ORDER BY CNT DESC #ORDR BY CNT ASC #로 바꾸면 제일 적은곳부터 10개
+    ) A
+WHERE ROWNUM <= 10; #상위 10건만을 추출함
+
+# 1등 중구 명동
+# 2등 강남구 역삼1동
+# 3등 영등포동...
+
+CREATE INDEX IDX_TB_TRDAR_02 ON TB_TRDAR(TRDAR_INDUTY_SMALL_CL_CD);
+
+
+
+상권 정보 데이터 분석
+각 지역별 (시/군/구 기준) 인구수 대비 커피전문점의 개수 구하기
+
+
+SELECT
+    *
+FROM
+(
+    SELECT ADMINIST_ZONE_NO
+    ,A.ADMINIST_ZONE_NM
+    ,A.SIGNGU_CD
+    ,A."인구수"
+    ,A."커피전문점매장수"
+    ,TRUNC(A."인구수"/A. "커피전문점매장수") "매장1개당인구수" #매장1개당인구수를 구한다/
+    #위에가 결과에 나오는 최종 COLUMN NAMES들
+    FROM
+    (
+    SELECT A.ADMINIST)ZONE_NO, A.ADMINIST_ZONE_NM, A.POPLTN_CNT "인구수",B.SIGNGU)CD, COUNT(*) AS "커피전문점매장수" #각 지역의 인구수 및 커피전문점의 매장수를 구한다
+    FROM
+    (
+        SELECT A.ADMINIST)ZONE_NO, A.ADMINIST_ZONE_NM, SUM(A.POPLTN_CNT) AS POPLTN_CNT
+        FROM TB_POPLTN A
+        WHERE A.STD_MT = '201010'
+        AND A.POPLTN_SE_CD = 'T' #남녀 둘다 포함
+        AND A.ADMINIST_ZONE_NO LIKE '____00000'
+        GROUP BY A.ADMINIST_ZONE_NO, A.ADMINIST_ZONE_NM
+
+        )A #위에테이블을 A
+        , TB_TRDAR B #상권테이블
+        WHERE SUBSTR(A.ADMINIST_ZONE_NO, 1, 5) = B.SIGNGU_CD #시,구 코드를 기준으로 조인
+        AND B.TRDAR_INDUTY_SMALL_CL_CD = 'Q12A01' -- 커피전문점/카페/다방
+        GROUP BY A.ADMINIST_ZONE_NO, A.ADMINIST_ZONE_NM, A.POPLTN_CNT, B.SIGNGU_CD
+        ORDR BY A.ADMINIST_ZONE_NO, A.ADMINIST_ZONE_NM
+        )   A
+        ORDER BY "매장1개당인구수" DESC #매장1개당 인구수가 많은 순으로 정렬한다. 즉 인구수에 비해서 커피전문점은 극히 적은 지역이 상위로 나온다.
+    )
+WHERE ROWNUM <= 10; #상위 10건만을 출력한다.
+
+
+매장대비 사람수많은 지역
+1) 부산광역시
+2)서울특별시 강북구
+3) 서울특별시 중량구
+4) 서울특별시 도봉구
+5) 부산광역시 사하구
+6) 서울특별시 노원구
+7) 경상북도 예천군
+8)서울특별시 양천구
+9)전라북도 진안군
+10) 경기도 시흥시
+#데이터를 이용해서 사업을 어디서하면 MERIT가있을지도 알아볼수있다.
+
+반대로 ASC로 매장수대비 인구수가 적은곳을 볼때는 이곳은 직업이나 회사가많이모여있어서 장사가 되는구나라고 유추할수도있음
+
+
+

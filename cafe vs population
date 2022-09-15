@@ -1,7 +1,13 @@
-
-Hyunseung Hong <hyunseunghong98@gmail.com>
-2022. 7. 31. 오후 8:29
-나에게
+ ----using commercial area data, I have found number of cafes vs population of each different areas in Seoul
+ -----To predict which area will be better to own a coffeeshop or where is more risky to do coffeeshop business
+ -----by knowing some places are too congested with same type of places while some other areas are with less coffee-shops compared to that area's population 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
 
 #서울특별시 강남구 기준 각 업종별 상가의 개수가 많은 순으로 조회한다.'
 #상권정보 데이터 다운로드
